@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Soul Browser</string>
+    <string name="search_or_enter_url">ابحث أو اكتب عنوان URL</string>
+    <string name="new_tab">علامة تبويب جديدة</string>
+    <string name="incognito_tab">علامة تبويب التصفح المتخفي</string>
+    <string name="history">السجل</string>
+    <string name="downloads">التنزيلات</string>
+    <string name="bookmarks">الإشارات المرجعية</string>
+    <string name="settings">الإعدادات</string>
+</resources>

@@ -1,0 +1,6 @@
+{
+  "name": "Soul Browser",
+  "description": "Professional feature-rich web browser matching Soul Browser with tabs manager, media sniffer, downloader, bookmarks, UI customization, and ad block.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
