@@ -205,24 +205,40 @@ class BrowserViewModel(
         val index = _activeTabIndex.value
         if (index in currentList.indices) {
             val tab = currentList[index]
-            val updated = tab.copy(
-                title = title ?: tab.title,
-                url = url ?: tab.url,
-                progress = progress ?: tab.progress,
-                isLoading = isLoading ?: tab.isLoading,
-                canGoBack = canGoBack ?: tab.canGoBack,
-                canGoForward = canGoForward ?: tab.canGoForward,
-                faviconUrl = faviconUrl ?: tab.faviconUrl,
-                previewBitmap = bitmap ?: tab.previewBitmap
-            )
-            currentList[index] = updated
-            _tabs.value = currentList
+            val newTitle = title ?: tab.title
+            val newUrl = url ?: tab.url
+            val newProgress = progress ?: tab.progress
+            val newLoading = isLoading ?: tab.isLoading
+            val newCanGoBack = canGoBack ?: tab.canGoBack
+            val newCanGoForward = canGoForward ?: tab.canGoForward
+            val newFavicon = faviconUrl ?: tab.faviconUrl
+            val newBitmap = bitmap ?: tab.previewBitmap
 
-            // Record to history if not incognito
-            if (url != null && !tab.isIncognito && url.startsWith("http")) {
-                viewModelScope.launch(Dispatchers.IO) {
-                    repository.addHistory(HistoryItem(title = title ?: tab.title, url = url))
-                }
+            if (newTitle != tab.title || newUrl != tab.url || newProgress != tab.progress ||
+                newLoading != tab.isLoading || newCanGoBack != tab.canGoBack ||
+                newCanGoForward != tab.canGoForward || newFavicon != tab.faviconUrl ||
+                (bitmap != null && newBitmap != tab.previewBitmap)) {
+
+                currentList[index] = tab.copy(
+                    title = newTitle,
+                    url = newUrl,
+                    progress = newProgress,
+                    isLoading = newLoading,
+                    canGoBack = newCanGoBack,
+                    canGoForward = newCanGoForward,
+                    faviconUrl = newFavicon,
+                    previewBitmap = newBitmap
+                )
+                _tabs.value = currentList
+            }
+        }
+    }
+
+    fun recordHistory(title: String, url: String) {
+        val tab = currentTab.value ?: return
+        if (!tab.isIncognito && url.startsWith("http")) {
+            viewModelScope.launch(Dispatchers.IO) {
+                repository.addHistory(HistoryItem(title = title.ifBlank { url }, url = url))
             }
         }
     }

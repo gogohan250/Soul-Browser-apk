@@ -26,6 +26,7 @@ fun BrowserWebView(
     onProgressChange: (Int) -> Unit,
     onTitleChange: (String) -> Unit,
     onUrlChange: (String) -> Unit,
+    onPageFinished: (url: String, title: String) -> Unit,
     onFaviconChange: (String?) -> Unit,
     onCanGoBackChange: (Boolean) -> Unit,
     onCanGoForwardChange: (Boolean) -> Unit,
@@ -38,6 +39,7 @@ fun BrowserWebView(
 ) {
     val context = LocalContext.current
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
+    var currentLoadedUrl by remember(tab.id) { mutableStateOf(tab.url) }
 
     // React to Desktop Site toggle
     LaunchedEffect(config.desktopSite, webViewInstance) {
@@ -118,7 +120,6 @@ fun BrowserWebView(
 
                         override fun onReceivedIcon(view: WebView?, icon: Bitmap?) {
                             super.onReceivedIcon(view, icon)
-                            // Favicon
                         }
                     }
 
@@ -144,14 +145,21 @@ fun BrowserWebView(
 
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                             super.onPageStarted(view, url, favicon)
-                            url?.let { onUrlChange(it) }
+                            url?.let {
+                                currentLoadedUrl = it
+                                onUrlChange(it)
+                            }
                             onCanGoBackChange(view?.canGoBack() ?: false)
                             onCanGoForwardChange(view?.canGoForward() ?: false)
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
-                            url?.let { onUrlChange(it) }
+                            val finalUrl = url ?: tab.url
+                            currentLoadedUrl = finalUrl
+                            onUrlChange(finalUrl)
+                            onTitleChange(view?.title ?: tab.title)
+                            onPageFinished(finalUrl, view?.title ?: tab.title)
                             onCanGoBackChange(view?.canGoBack() ?: false)
                             onCanGoForwardChange(view?.canGoForward() ?: false)
 
@@ -177,20 +185,20 @@ fun BrowserWebView(
                                 view?.evaluateJavascript(darkCss, null)
                             }
 
-                            // Capture preview snapshot for tab switcher
-                            try {
-                                if (view != null && view.width > 0 && view.height > 0) {
-                                    val bitmap = Bitmap.createBitmap(
-                                        view.width / 2,
-                                        view.height / 2,
-                                        Bitmap.Config.ARGB_8888
-                                    )
-                                    val canvas = android.graphics.Canvas(bitmap)
-                                    canvas.scale(0.5f, 0.5f)
-                                    view.draw(canvas)
-                                    onCapturePreview(bitmap)
-                                }
-                            } catch (_: Exception) {}
+                            // Capture preview snapshot for tab switcher safely via post
+                            view?.post {
+                                try {
+                                    if (view.width > 0 && view.height > 0) {
+                                        val w = (view.width / 2).coerceAtLeast(1)
+                                        val h = (view.height / 2).coerceAtLeast(1)
+                                        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                                        val canvas = android.graphics.Canvas(bitmap)
+                                        canvas.scale(0.5f, 0.5f)
+                                        view.draw(canvas)
+                                        onCapturePreview(bitmap)
+                                    }
+                                } catch (_: Throwable) {}
+                            }
                         }
 
                         override fun onReceivedSslError(
@@ -199,6 +207,45 @@ fun BrowserWebView(
                             error: SslError?
                         ) {
                             handler?.proceed()
+                        }
+
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            error: WebResourceError?
+                        ) {
+                            super.onReceivedError(view, request, error)
+                            if (request?.isForMainFrame == true) {
+                                val failingUrl = request.url.toString()
+                                val errorHtml = """
+                                    <!DOCTYPE html>
+                                    <html dir="rtl" lang="ar">
+                                    <head>
+                                        <meta charset="utf-8">
+                                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                        <style>
+                                            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; padding: 48px 20px; background: #F8F9FA; color: #202124; }
+                                            .card { background: white; border-radius: 16px; padding: 32px 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); max-width: 380px; margin: 0 auto; }
+                                            .icon { font-size: 40px; margin-bottom: 12px; }
+                                            h2 { color: #5B67CA; margin: 0 0 12px; font-size: 20px; }
+                                            p { color: #5F6368; font-size: 14px; line-height: 1.5; margin: 0 0 20px; }
+                                            .url-text { word-break: break-all; color: #1A73E8; font-size: 13px; font-weight: bold; }
+                                            .btn { background: #5B67CA; color: white; border: none; padding: 12px 28px; border-radius: 24px; font-size: 14px; font-weight: bold; cursor: pointer; }
+                                        </style>
+                                    </head>
+                                    <body>
+                                        <div class="card">
+                                            <div class="icon">🌐</div>
+                                            <h2>متصفح Soul Browser</h2>
+                                            <p>تعذر الاتصال بالموقع:<br><span class="url-text">$failingUrl</span></p>
+                                            <p>يرجى التأكد من اتصال الإنترنت أو كتابة عنوان آخر في شريط البحث.</p>
+                                            <button class="btn" onclick="location.reload()">إعادة المحاولة</button>
+                                        </div>
+                                    </body>
+                                    </html>
+                                """.trimIndent()
+                                view?.loadDataWithBaseURL(null, errorHtml, "text/html", "UTF-8", null)
+                            }
                         }
                     }
 
@@ -211,12 +258,19 @@ fun BrowserWebView(
                         clearHistory()
                     }
 
+                    currentLoadedUrl = tab.url
                     loadUrl(tab.url)
                     webViewInstance = this
                 }
             },
             update = { wv ->
-                if (wv.url != tab.url && tab.url.isNotBlank()) {
+                val cleanWvUrl = wv.url?.trimEnd('/') ?: ""
+                val cleanTarget = tab.url.trimEnd('/')
+                val cleanLoaded = currentLoadedUrl.trimEnd('/')
+
+                // Only reload when tab.url has truly changed to a new address
+                if (cleanTarget.isNotBlank() && cleanTarget != cleanLoaded && cleanTarget != cleanWvUrl) {
+                    currentLoadedUrl = tab.url
                     wv.loadUrl(tab.url)
                 }
             },

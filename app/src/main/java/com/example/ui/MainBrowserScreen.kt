@@ -220,25 +220,28 @@ fun MainBrowserScreen(
                         .padding(paddingValues)
                 ) {
                     currentTab?.let { activeTab ->
-                        BrowserWebView(
-                            tab = activeTab,
-                            config = config,
-                            onProgressChange = { p ->
-                                viewModel.updateCurrentTabState(progress = p, isLoading = p < 100)
-                            },
-                            onTitleChange = { t -> viewModel.updateCurrentTabState(title = t) },
-                            onUrlChange = { u -> viewModel.updateCurrentTabState(url = u) },
-                            onFaviconChange = { f -> viewModel.updateCurrentTabState(faviconUrl = f) },
-                            onCanGoBackChange = { b -> viewModel.updateCurrentTabState(canGoBack = b) },
-                            onCanGoForwardChange = { f -> viewModel.updateCurrentTabState(canGoForward = f) },
-                            onVideoDetected = { vUrl, vTitle -> viewModel.onVideoDetected(vUrl, vTitle) },
-                            onImagesExtracted = { imgs -> viewModel.onImagesExtracted(imgs) },
-                            onSourceExtracted = { src -> viewModel.setScreen(CurrentScreen.PageSource(src)) },
-                            onCapturePreview = { bmp -> viewModel.updateCurrentTabState(bitmap = bmp) },
-                            onDownloadRequested = { dlUrl, _, _, mime ->
-                                viewModel.downloadMedia(dlUrl, "download_${System.currentTimeMillis()}", if (mime.startsWith("video")) "video" else "all")
-                            }
-                        )
+                        key(activeTab.id) {
+                            BrowserWebView(
+                                tab = activeTab,
+                                config = config,
+                                onProgressChange = { p ->
+                                    viewModel.updateCurrentTabState(progress = p, isLoading = p < 100)
+                                },
+                                onTitleChange = { t -> viewModel.updateCurrentTabState(title = t) },
+                                onUrlChange = { u -> viewModel.updateCurrentTabState(url = u) },
+                                onPageFinished = { finishedUrl, title -> viewModel.recordHistory(title, finishedUrl) },
+                                onFaviconChange = { f -> viewModel.updateCurrentTabState(faviconUrl = f) },
+                                onCanGoBackChange = { b -> viewModel.updateCurrentTabState(canGoBack = b) },
+                                onCanGoForwardChange = { f -> viewModel.updateCurrentTabState(canGoForward = f) },
+                                onVideoDetected = { vUrl, vTitle -> viewModel.onVideoDetected(vUrl, vTitle) },
+                                onImagesExtracted = { imgs -> viewModel.onImagesExtracted(imgs) },
+                                onSourceExtracted = { src -> viewModel.setScreen(CurrentScreen.PageSource(src)) },
+                                onCapturePreview = { bmp -> viewModel.updateCurrentTabState(bitmap = bmp) },
+                                onDownloadRequested = { dlUrl, _, _, mime ->
+                                    viewModel.downloadMedia(dlUrl, "download_${System.currentTimeMillis()}", if (mime.startsWith("video")) "video" else "all")
+                                }
+                            )
+                        }
                     }
 
                     // Floating Video Sniffer Badge matching Screenshot 23
