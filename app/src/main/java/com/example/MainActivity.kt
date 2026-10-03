@@ -8,9 +8,12 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.browser.BrowserPreferences
 import com.example.data.BrowserDatabase
@@ -40,6 +43,15 @@ class MainActivity : ComponentActivity() {
 
             val config by browserViewModel.config.collectAsState()
             val useDark = config.isDarkMode || isSystemInDarkTheme()
+
+            val insetsController = remember(window) {
+                WindowCompat.getInsetsController(window, window.decorView)
+            }
+            DisposableEffect(useDark) {
+                insetsController.isAppearanceLightStatusBars = !useDark
+                insetsController.isAppearanceLightNavigationBars = !useDark
+                onDispose { }
+            }
 
             MyApplicationTheme(darkTheme = useDark) {
                 Surface(

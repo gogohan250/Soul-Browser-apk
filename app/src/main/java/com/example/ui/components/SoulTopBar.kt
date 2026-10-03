@@ -47,11 +47,15 @@ fun SoulTopBar(
     var urlInput by remember(tab?.url) { mutableStateOf(tab?.url ?: "") }
     var isEditing by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        modifier = modifier.fillMaxWidth()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+        ) {
         // Find in page bar if active
         AnimatedVisibility(visible = findInPageQuery != null) {
             var queryText by remember { mutableStateOf(findInPageQuery ?: "") }
@@ -239,6 +243,7 @@ fun SoulTopBar(
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = Color.Transparent
             )
+        }
         }
     }
 }

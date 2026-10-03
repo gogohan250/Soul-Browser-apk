@@ -160,6 +160,7 @@ fun MainBrowserScreen(
         }
         CurrentScreen.Browser -> {
             Scaffold(
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 topBar = {
                     if (!isFullscreen) {
                         SoulTopBar(
